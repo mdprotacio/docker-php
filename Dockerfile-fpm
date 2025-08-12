@@ -6,11 +6,11 @@ LABEL org.opencontainers.image.description="PHP base image with commonly used ex
 
 RUN set -eux; \
   apt-get update \
-  && LIBAVIF=`apt-cache pkgnames libavif | sort -V | head -1` \
-  && LIBEVENTEXTRA=`apt-cache pkgnames libevent-extra | sort -V | head -1` \
-  && LIBEVENTOPENSSL=`apt-cache pkgnames libevent-openssl | sort -V | head -1` \
-  && LIBEVENTPTHREADS=`apt-cache pkgnames libevent-pthreads | sort -V | head -1` \
-  && LIBLZ4=`apt-cache pkgnames liblz4 | sort -V | head -1` \
+  && LIBAVIF=`apt-cache pkgnames libavif | sort -V | tail -1` \
+  && LIBEVENTEXTRA=`apt-cache pkgnames libevent-extra | sort -V | tail -1` \
+  && LIBEVENTOPENSSL=`apt-cache pkgnames libevent-openssl | sort -V | tail -1` \
+  && LIBEVENTPTHREADS=`apt-cache pkgnames libevent-pthreads | sort -V | tail -1` \
+  && LIBLZ4=`apt-cache pkgnames liblz4 | sort -V | tail -1` \
   && apt-get install --no-install-recommends -y \
     git \
     imagemagick \
@@ -39,7 +39,6 @@ RUN set -eux; \
     wget \
     zlib1g \
   ; \
-  apt-mark manual '.*' > /dev/null; \
   savedAptMark="$(apt-mark showmanual)"; \
   apt-get install -y --no-install-recommends \
     $PHPIZE_DEPS \
@@ -161,11 +160,6 @@ RUN set -eux; \
     ./configure; \
     make && make install || exit 1; \
     cd -; \
-  set +e; \
-  $(dpkg --compare-versions ${PHP_VERSION} lt 8) \
-  ; if [ "$?" -eq "0" ]; then pecl install --onlyreqdeps --nobuild xdebug-3.1.6; \
-    else pecl install --onlyreqdeps --nobuild xdebug; \
-    fi; \
   set +e; \
     if dpkg --compare-versions ${PHP_VERSION} lt 8; \
     then pecl install --onlyreqdeps --nobuild xdebug-3.1.6; \

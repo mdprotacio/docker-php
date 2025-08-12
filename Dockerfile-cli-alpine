@@ -65,9 +65,10 @@ RUN set -eux; \
     ${PHP_EXTRA_BUILD_DEPS:-} \
   ; export CFLAGS="$PHP_CFLAGS" CPPFLAGS="$PHP_CPPFLAGS" LDFLAGS="$PHP_LDFLAGS" \
   ; set +e \
-  ; if dpkg --compare-versions ${PHP_VERSION} ge 8.1; then WITH_AVIF=--with-avif; else WITH_AVIF=; fi \
-  ; if dpkg --compare-versions ${PHP_VERSION} ge 7.4; then WITH_PARAMS="--with-jpeg --with-xpm --with-webp --with-freetype ${WITH_AVIF}"; \
-    else WITH_PARAMS="--with-jpeg-dir=/usr/include --with-png-dir=/usr/include --with-webp-dir=/usr/include --with-freetype-dir=/usr/include --with-xpm-dir=/usr/include"; fi \
+  ; php -r "echo version_compare(getenv('PHP_VERSION'), '8.1', '>=') ? 'WITH_AVIF=--with-avif' : 'WITH_AVIF=';" > /tmp/with_avif \
+  ; . /tmp/with_avif; rm /tmp/with_avif \
+  ; php -r "echo version_compare(getenv('PHP_VERSION'), '7.4', '>=') ? 'WITH_PARAMS=--with-jpeg --with-xpm --with-webp --with-freetype ' . (getenv('WITH_AVIF') ? '--with-avif' : '') : 'WITH_PARAMS=--with-jpeg-dir=/usr/include --with-png-dir=/usr/include --with-webp-dir=/usr/include --with-freetype-dir=/usr/include --with-xpm-dir=/usr/include';" > /tmp/with_params \
+  ; . /tmp/with_params; rm /tmp/with_params \
   ; set -e \
   ; \
   docker-php-ext-configure gd ${WITH_PARAMS} \
@@ -151,10 +152,9 @@ RUN set -eux; \
     make && make install || exit 1; \
     cd -; \
   set +e; \
-    if dpkg --compare-versions ${PHP_VERSION} lt 8; \
-    then pecl install --onlyreqdeps --nobuild xdebug-3.1.6; \
-    else pecl install --onlyreqdeps --nobuild xdebug; \
-    fi; \
+    php -r "exit(version_compare(getenv('PHP_VERSION'), '8.0', '<') ? 0 : 1);" \
+    && pecl install --onlyreqdeps --nobuild xdebug-3.1.6 \
+    || pecl install --onlyreqdeps --nobuild xdebug; \
   set -e; \
     cd "$(pecl config-get temp_dir)/xdebug"; \
     phpize; \
@@ -168,14 +168,9 @@ RUN set -eux; \
     make && make install || exit 1; \
     cd -; \
   set +e; \
-    if dpkg --compare-versions ${PHP_VERSION} lt 8.2; then \
-      pecl install --onlyreqdeps --nobuild mcrypt; \
-      cd "$(pecl config-get temp_dir)/mcrypt"; \
-      phpize; \
-      ./configure; \
-      make && make install || exit 1; \
-      cd -; \
-    fi; \
+    php -r "exit(version_compare(getenv('PHP_VERSION'), '8.2', '<') ? 0 : 1);" \
+    && { pecl install --onlyreqdeps --nobuild mcrypt; cd "$(pecl config-get temp_dir)/mcrypt"; phpize; ./configure; make && make install || exit 1; cd -; } \
+    || true; \
   set -e; \
   pecl install --onlyreqdeps --nobuild ast; \
     cd "$(pecl config-get temp_dir)/ast"; \
@@ -190,10 +185,10 @@ RUN set -eux; \
     make && make install || exit 1; \
     cd -; \
   set +e; \
-    if dpkg --compare-versions ${PHP_VERSION} lt 8.1; then pecl install --onlyreqdeps --nobuild openswoole-4.12.1; \
-    elif dpkg --compare-versions ${PHP_VERSION} lt 8.3; then pecl install --onlyreqdeps --nobuild openswoole-22.0.0; \
-    else pecl install --onlyreqdeps --nobuild openswoole; \
-    fi; \
+    php -r "if (version_compare(getenv('PHP_VERSION'), '8.1', '<')) { exit(0);} elseif (version_compare(getenv('PHP_VERSION'), '8.3', '<')) { exit(1);} else { exit(2);}"; rc=$?; \
+    if [ "$rc" -eq 0 ]; then pecl install --onlyreqdeps --nobuild openswoole-4.12.1; \
+    elif [ "$rc" -eq 1 ]; then pecl install --onlyreqdeps --nobuild openswoole-22.0.0; \
+    else pecl install --onlyreqdeps --nobuild openswoole; fi; \
   set -e; \
     cd "$(pecl config-get temp_dir)/openswoole"; \
     phpize; \
