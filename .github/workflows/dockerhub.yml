@@ -63,7 +63,6 @@ jobs:
           - cli-alpine
           - fpm-alpine
           - zts-alpine
-          - zts
           - apache
           - cli
           - fpm
