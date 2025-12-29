@@ -125,11 +125,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     pie install --skip-enable-extension php-memcached/php-memcached --enable-memcached-json --enable-memcached-igbinary --enable-memcached-msgpack  && \
     pie install --skip-enable-extension phpredis/phpredis --enable-redis-igbinary --enable-redis-msgpack  && \
     pie install --skip-enable-extension supermetrics/jsonpath && \
-    ( [ "$PHP_VERSION_ID" -lt 80500 ] && \
-      pie install --skip-enable-extension swoole/swoole \
-        --enable-swoole-curl \
-        --enable-openssl \
-        --enable-sockets || true ) && \
+    pie install --skip-enable-extension swoole/swoole$( [ "$PHP_VERSION_ID" -ge 80500 ] && echo :dev-master ) && \
     pie install --skip-enable-extension xdebug/xdebug  && \
     docker-php-ext-enable  \
 #      amqp \
@@ -143,7 +139,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
       mongodb \
       pcov \
       redis \
-      $( [ "$PHP_VERSION_ID" -lt 80500 ] && echo swoole ) \
+      swoole \
       timezonedb \
       xdebug \
       zip || { echo "Could not enable some extensions"; exit 1; }; \
