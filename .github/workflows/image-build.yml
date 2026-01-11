@@ -94,7 +94,7 @@ jobs:
             php-${{ inputs.version }}-cli-alpine=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-cli-alpine-prebuild
             php-${{ inputs.version }}-zts=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-zts-prebuild
             php-${{ inputs.version }}-zts-alpine=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-zts-alpine-prebuild
-          pull: true
+          pull: ${{ github.event_name == 'pull_request' }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           provenance: mode=max
