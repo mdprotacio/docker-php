@@ -51,7 +51,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=PHP${{ inputs.version }} ${{ inputs.variant }}
             org.opencontainers.image.description=PHP${{ inputs.version }} ${{ inputs.variant }} preinstalled with various extensions
-            org.opencontainers.image.vendor=MDP Software Development Services
+            org.opencontainers.image.vendor=Koala Software Technology Innovations
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.head_ref || github.ref_name }}/Dockerfile-${{ inputs.variant }}
             org.opencontainers.image.version=${{ inputs.version }}-${{ inputs.variant }}
