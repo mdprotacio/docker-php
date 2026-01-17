@@ -88,15 +88,6 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
         make && make test && make install && make clean || exit 1; \
         cd -; \
         docker-php-ext-enable --ini-name 0-docker-php-ext-msgpack.ini msgpack; \
-    if [ "$PHP_VERSION_ID" -lt 80500 ]; then \
-    pecl install --onlyreqdeps --nobuild amqp; \
-        cd "$(pecl config-get temp_dir)/amqp"; \
-        phpize; \
-        ./configure; \
-        make && make test && make install && make clean || exit 1; \
-        cd -; \
-        docker-php-ext-enable amqp; \
-    fi; \
     pecl install --onlyreqdeps --nobuild sqlsrv; \
         cd "$(pecl config-get temp_dir)/sqlsrv"; \
         phpize; \
@@ -127,7 +118,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     pie install --skip-enable-extension mongodb/mongodb-extension && \
     pie install --skip-enable-extension nikic/php-ast  && \
     pie install --skip-enable-extension osmanov/pecl-ev  && \
-#    pie install --skip-enable-extension pdezwart/php-amqp && \
+    pie install --skip-enable-extension php-amqp/php-amqp && \
     pie install --skip-enable-extension pecl/mcrypt  && \
     pie install --skip-enable-extension pecl/pcov  && \
     pie install --skip-enable-extension pecl/timezonedb  && \
@@ -138,7 +129,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     pie install --skip-enable-extension swoole/swoole$( [ "$PHP_VERSION_ID" -ge 80500 ] && echo :dev-master ) && \
     pie install --skip-enable-extension xdebug/xdebug  && \
     docker-php-ext-enable  \
-#      amqp \
+      amqp \
       apcu \
       ast \
       ev \
