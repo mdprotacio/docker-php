@@ -32,9 +32,9 @@ jobs:
       max-parallel: 16
       matrix:
         version:
-          - '8.5.1'
-          - '8.4.16'
-          - '8.3.29'
+          - '8.5.2'
+          - '8.4.17'
+          - '8.3.30'
           - '8.2.30'
         variant:
           - cli-alpine
@@ -54,9 +54,9 @@ jobs:
       matrix:
         version:
           - '8.2.30'
-          - '8.3.29'
-          - '8.4.16'
-          - '8.5.1'
+          - '8.3.30'
+          - '8.4.17'
+          - '8.5.2'
         variant:
           - cli-alpine
           - fpm-alpine
@@ -70,7 +70,7 @@ jobs:
     with:
       version: ${{ matrix.version }}
       variant: ${{ matrix.variant }}
-      latest: '8.5.1'
+      latest: '8.5.2'
   cleanup-cache:
     needs: build-images
     if: github.event_name == 'pull_request' && needs.build-images.result == 'success'
