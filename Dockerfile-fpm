@@ -5,7 +5,6 @@ FROM php-${PHP_VERSION}-cli AS builder
 FROM php:${PHP_VERSION}-fpm
 # Add dependencies for PIE
 ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-essential gcc git libtool m4 make"
-ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV DEBIAN_FRONTEND=noninteractive
 # Copy PIE and Composer binaries
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
