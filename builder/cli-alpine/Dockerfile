@@ -8,6 +8,7 @@ ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-base gcc git libtool m4 
 
 # Copy PIE and Composer binaries
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_PROCESS_TIMEOUT=0
 COPY --link --from=composer/composer /usr/bin/composer /usr/local/bin/composer
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 
