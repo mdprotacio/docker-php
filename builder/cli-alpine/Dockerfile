@@ -79,15 +79,15 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
         make && make test && make install && make clean || exit 1; \
         cd -; \
         docker-php-ext-enable --ini-name 0-docker-php-ext-msgpack.ini msgpack; \
-    pecl install --onlyreqdeps --nobuild sqlsrv; \
+    if [ "$PHP_VERSION_ID" -lt 80500 ]; then \
+    pecl install --onlyreqdeps --nobuild $( [ "$PHP_VERSION_ID" -ge 80400 ] && echo -f ) sqlsrv$( [ "$PHP_VERSION_ID" -ge 80400 ] && echo -beta ); \
         cd "$(pecl config-get temp_dir)/sqlsrv"; \
         phpize; \
         ./configure; \
         make && make test && make install && make clean || exit 1; \
         cd -; \
         docker-php-ext-enable sqlsrv; \
-    if [ "$PHP_VERSION_ID" -lt 80500 ]; then \
-    pecl install --onlyreqdeps --nobuild pdo_sqlsrv; \
+    pecl install --onlyreqdeps --nobuild $( [ "$PHP_VERSION_ID" -ge 80400 ] && echo -f ) pdo_sqlsrv$( [ "$PHP_VERSION_ID" -ge 80400 ] && echo -beta ); \
         cd "$(pecl config-get temp_dir)/pdo_sqlsrv"; \
         phpize; \
         ./configure; \
