@@ -37,15 +37,17 @@ jobs:
           - '8.3.30'
           - '8.2.30'
         variant:
-          - cli-alpine
-          - zts-alpine
           - cli
           - zts
+        os:
+          - debian
+          - alpine
     uses: ./.github/workflows/base-build.yml
     secrets: inherit
     with:
       version: ${{ matrix.version }}
       variant: ${{ matrix.variant }}
+      os: ${{ matrix.os }}
   build-images:
     needs: base-images
     if: needs.base-images.result == 'success'

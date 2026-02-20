@@ -1,5 +1,6 @@
 ARG PHP_VERSION=8
-FROM php:${PHP_VERSION}-zts-alpine AS builder
+ARG PHP_VARIANT=cli
+FROM php:${PHP_VERSION}-${PHP_VARIANT}-alpine AS builder
 
 # Dependencies for building PHP extensions
 # Add dependencies for PIE
@@ -14,6 +15,7 @@ COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 # Install PHP extension build dependencies
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
+    PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
     composer config --global github-oauth.github.com $GITHUB_TOKEN; \
     apk update && \
     apk add --no-cache --virtual .build-deps \
@@ -110,7 +112,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     pie install --skip-enable-extension osmanov/pecl-ev  && \
     pie install --skip-enable-extension php-amqp/php-amqp && \
     pie install --skip-enable-extension pecl/mcrypt  && \
-    pie install --skip-enable-extension pecl/parallel  && \
+    if [ "$PHP_ZTS" -eq 1 ]; then pie install --skip-enable-extension pecl/parallel; fi && \
     pie install --skip-enable-extension pecl/pcov  && \
     pie install --skip-enable-extension pecl/timezonedb  && \
     pie install --skip-enable-extension pecl/zip  && \
@@ -129,7 +131,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
       mcrypt \
       memcached \
       mongodb \
-      parallel \
+      $( [ "$PHP_ZTS" -eq 1 ] && echo parallel ) \
       pcov \
       redis \
       swoole \
