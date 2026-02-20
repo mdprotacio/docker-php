@@ -28,6 +28,7 @@ Preinstalled extensions apart from the ones provided by the official PHP images:
 - mongodb
 - msgpack
 - mysqli
+- parallel (for ZTS variants only)
 - pcntl
 - pcov
 - pdo
