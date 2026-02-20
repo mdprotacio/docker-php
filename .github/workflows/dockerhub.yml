@@ -11,12 +11,22 @@ on:
   schedule:
     - cron: '0 0 1,16 * *'
   workflow_dispatch:
+    inputs:
+      base_image_registry:
+        description: 'Base PHP image registry (docker.io, public.ecr.aws, etc.)'
+        required: false
+        default: 'docker.io'
+        type: choice
+        options:
+          - public.ecr.aws
+          - docker.io
 
 concurrency:
   # PRs: group by PR number; non-PRs: group by branch ref
   group: ${{ github.event_name == 'pull_request' && format('{0}-PR-{1}', github.workflow, github.event.pull_request.number) || format('{0}-{1}', github.workflow, github.ref) }}
   # Only cancel in-progress for PRs; everything else will queue for its group
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   packages: write
@@ -48,11 +58,12 @@ jobs:
       version: ${{ matrix.version }}
       variant: ${{ matrix.variant }}
       os: ${{ matrix.os }}
+      base_image_registry: ${{ github.event.inputs.base_image_registry || 'public.ecr.aws' }}
   build-images:
     needs: base-images
     if: needs.base-images.result == 'success'
     strategy:
-      max-parallel: 20
+      max-parallel: 12
       matrix:
         version:
           - '8.2.30'
@@ -77,6 +88,7 @@ jobs:
       os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
       latest: '8.5.3'
+      base_image_registry: ${{ github.event.inputs.base_image_registry || 'public.ecr.aws' }}
   cleanup-cache:
     needs: build-images
     if: github.event_name == 'pull_request' && needs.build-images.result == 'success'

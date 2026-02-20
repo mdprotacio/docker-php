@@ -1,6 +1,9 @@
 ARG PHP_VERSION=8
 ARG PHP_VARIANT=cli
-FROM php:${PHP_VERSION}-${PHP_VARIANT} AS builder
+ARG BASE_IMAGE_REGISTRY=public.ecr.aws
+ARG BASE_IMAGE_PATH=docker/library
+FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/composer:latest AS composer
+FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${PHP_VERSION}-${PHP_VARIANT} AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 # Dependencies for building PHP extensions
@@ -10,7 +13,7 @@ ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-essential gcc git libtoo
 # Copy PIE and Composer binaries
 ENV COMPOSER_ALLOW_SUPERUSER=1
 ENV COMPOSER_PROCESS_TIMEOUT=6000
-COPY --link --from=composer/composer /usr/bin/composer /usr/local/bin/composer
+COPY --link --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 
 # Replace http package sources with https

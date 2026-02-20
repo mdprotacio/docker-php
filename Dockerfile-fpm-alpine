@@ -1,13 +1,16 @@
 # syntax=docker/dockerfile:1.4
 ARG PHP_VERSION=8
+ARG BASE_IMAGE_REGISTRY=public.ecr.aws
+ARG BASE_IMAGE_PATH=docker/library
+FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/composer:latest AS composer
 FROM php-${PHP_VERSION}-cli-alpine AS builder
 
-FROM php:${PHP_VERSION}-fpm-alpine
+FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${PHP_VERSION}-fpm-alpine
 # Add dependencies for PIE
 ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-base gcc git libtool m4 make"
 # Copy PIE and Composer binaries
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
-COPY --link --from=composer/composer /usr/bin/composer /usr/local/bin/composer
+COPY --link --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 
 # Install dependencies
