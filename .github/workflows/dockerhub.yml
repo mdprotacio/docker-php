@@ -2,17 +2,6 @@
 
 name: Build PHP Images and Push to Registries
 
-# Define versions once as an anchor
-x-versions: &versions
-  - '8.2.30'
-  - '8.3.30'
-  - '8.4.18'
-  - '8.5.3'
-x-latest-version: &latest '8.5.3'
-x-os: &os
-  - alpine
-  - debian
-
 # Controls when the action will run.
 on:
   pull_request:
@@ -42,8 +31,14 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        version: *versions
-        os: *os
+        version:
+          - '8.2.30'
+          - '8.3.30'
+          - '8.4.18'
+          - '8.5.3'
+        os:
+          - alpine
+          - debian
         variant:
           - cli
           - zts
@@ -59,8 +54,14 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        version: *versions
-        os: *os
+        version:
+          - '8.2.30'
+          - '8.3.30'
+          - '8.4.18'
+          - '8.5.3'
+        os:
+          - alpine
+          - debian
         variant:
           - apache
           - cli
@@ -75,7 +76,7 @@ jobs:
       version: ${{ matrix.version }}
       os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
-      latest: *latest
+      latest: '8.5.3'
   cleanup-cache:
     needs: build-images
     if: github.event_name == 'pull_request' && needs.build-images.result == 'success'

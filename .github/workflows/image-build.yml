@@ -51,20 +51,20 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/php
             docker.io/${{ github.repository_owner }}/php
           tags: |
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-${{ steps.compute_variants.output.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-${{ steps.compute_variants.output.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}-${{ steps.compute_variants.output.variant }},enable=${{ inputs.version == inputs.latest }}
-            type=raw,value=${{ steps.compute_variants.output.variant }},enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-${{ steps.compute_variants.outputs.variant }}
+            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-${{ steps.compute_variants.outputs.variant }}
+            type=raw,value=,prefix=${{ steps.semver.outputs.major }}-${{ steps.compute_variants.outputs.variant }},enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=${{ steps.compute_variants.outputs.variant }},enable=${{ inputs.version == inputs.latest }}
             type=raw,value=latest,enable=${{ inputs.version == inputs.latest && steps.compute_variants.outputs.variant == 'cli'}}
           labels: |
-            org.opencontainers.image.title=PHP${{ inputs.version }} ${{ steps.compute_variants.output.variant }}
-            org.opencontainers.image.description=PHP${{ inputs.version }} ${{ steps.compute_variants.output.variant }} preinstalled with various extensions
+            org.opencontainers.image.title=PHP${{ inputs.version }} ${{ steps.compute_variants.outputs.variant }}
+            org.opencontainers.image.description=PHP${{ inputs.version }} ${{ steps.compute_variants.outputs.variant }} preinstalled with various extensions
             org.opencontainers.image.vendor=MDP Software Development Services
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.head_ref || github.ref_name }}/Dockerfile-${{ steps.compute_variants.output.variant }}
-            org.opencontainers.image.version=${{ inputs.version }}-${{ steps.compute_variants.output.variant }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.head_ref || github.ref_name }}/Dockerfile-${{ steps.compute_variants.outputs.variant }}
+            org.opencontainers.image.version=${{ inputs.version }}-${{ steps.compute_variants.outputs.variant }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.base.name=docker.io/library/php:${{ inputs.version }}-${{ steps.compute_variants.output.variant }}
+            org.opencontainers.image.base.name=docker.io/library/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.variant }}
             org.opencontainers.image.licenses=GNU GPLv3
             org.opencontainers.image.authors=Melvin D. Protacio <mdprotacio@outlook.com>
       - name: Set up QEMU
@@ -89,12 +89,12 @@ jobs:
           # This step only echoes the expression into an output, evaluated by Actions
           # Use the same hashFiles() pattern you used in your build step.
           echo "scope_hash=${{ hashFiles('Dockerfile-*') }}" >> $GITHUB_OUTPUT
-      - name: Build PHP ${{ inputs.version }} ${{ steps.compute_variants.output.variant }} (use cache)
+      - name: Build PHP ${{ inputs.version }} ${{ steps.compute_variants.outputs.variant }} (use cache)
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile-${{ steps.compute_variants.output.variant }}
+          file: Dockerfile-${{ steps.compute_variants.outputs.variant }}
           build-args: |
             PHP_VERSION=${{ inputs.version }}
           build-contexts: |
