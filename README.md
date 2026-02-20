@@ -1,5 +1,5 @@
 # PHP Docker Images
-[![Build and Push to Registry](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml/badge.svg)](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml)
+[![Build PHP Images and Push to Registries](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml/badge.svg?branch=master)](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml)
 
 PHP container images preinstalled with commonly used extensions for web development.
 

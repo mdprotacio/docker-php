@@ -12,6 +12,10 @@ on:
       os:
         required: true
         type: string
+      base_image_registry:
+        required: false
+        type: string
+        default: 'public.ecr.aws'
 
 jobs:
   build-image:
@@ -32,6 +36,14 @@ jobs:
         id: compute_variants
         run: |
           echo "variant=${{ inputs.variant }}${{ inputs.os != 'debian' && format('-{0}', inputs.os) || '' }}" >> $GITHUB_OUTPUT
+      - name: Setup base image path
+        id: image_path
+        run: |
+          if [ "${{ inputs.base_image_registry }}" = "public.ecr.aws" ]; then
+            echo "path=docker/library" >> $GITHUB_OUTPUT
+          else
+            echo "path=library" >> $GITHUB_OUTPUT
+          fi
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -64,6 +76,8 @@ jobs:
           build-args: |
             PHP_VERSION=${{ inputs.version }}
             PHP_VARIANT=${{ inputs.variant }}
+            BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
+            BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
           pull: ${{ github.event_name == 'pull_request' }}
