@@ -2,6 +2,17 @@
 
 name: Build PHP Images and Push to Registries
 
+# Define versions once as an anchor
+x-versions: &versions
+  - '8.2.30'
+  - '8.3.30'
+  - '8.4.18'
+  - '8.5.3'
+x-latest-version: &latest '8.5.3'
+x-os: &os
+  - alpine
+  - debian
+
 # Controls when the action will run.
 on:
   pull_request:
@@ -29,19 +40,13 @@ permissions:
 jobs:
   base-images:
     strategy:
-      max-parallel: 16
+      max-parallel: 8
       matrix:
-        version:
-          - '8.5.3'
-          - '8.4.18'
-          - '8.3.30'
-          - '8.2.30'
+        version: *versions
+        os: *os
         variant:
           - cli
           - zts
-        os:
-          - debian
-          - alpine
     uses: ./.github/workflows/base-build.yml
     secrets: inherit
     with:
@@ -52,27 +57,25 @@ jobs:
     needs: base-images
     if: needs.base-images.result == 'success'
     strategy:
-      max-parallel: 14
+      max-parallel: 8
       matrix:
-        version:
-          - '8.2.30'
-          - '8.3.30'
-          - '8.4.18'
-          - '8.5.3'
+        version: *versions
+        os: *os
         variant:
-          - cli-alpine
-          - fpm-alpine
-          - zts-alpine
           - apache
           - cli
           - fpm
           - zts
+        exclude:
+          - variant: apache
+            os: alpine
     uses: ./.github/workflows/image-build.yml
     secrets: inherit
     with:
       version: ${{ matrix.version }}
+      os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
-      latest: '8.5.3'
+      latest: *latest
   cleanup-cache:
     needs: build-images
     if: github.event_name == 'pull_request' && needs.build-images.result == 'success'
