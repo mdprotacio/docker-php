@@ -51,9 +51,9 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/php
             docker.io/${{ github.repository_owner }}/php
           tags: |
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-${{ steps.compute_variants.outputs.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-${{ steps.compute_variants.outputs.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}-${{ steps.compute_variants.outputs.variant }},enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=${{ steps.compute_variants.outputs.variant }},prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-
+            type=raw,value=${{ steps.compute_variants.outputs.variant }},prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-
+            type=raw,value=${{ steps.compute_variants.outputs.variant }},prefix=${{ steps.semver.outputs.major }}-,enable=${{ inputs.version == inputs.latest }}
             type=raw,value=${{ steps.compute_variants.outputs.variant }},enable=${{ inputs.version == inputs.latest }}
             type=raw,value=latest,enable=${{ inputs.version == inputs.latest && steps.compute_variants.outputs.variant == 'cli'}}
           labels: |

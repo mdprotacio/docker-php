@@ -52,7 +52,7 @@ jobs:
     needs: base-images
     if: needs.base-images.result == 'success'
     strategy:
-      max-parallel: 8
+      max-parallel: 20
       matrix:
         version:
           - '8.2.30'
