@@ -29,16 +29,17 @@ permissions:
 jobs:
   base-images:
     strategy:
-      max-parallel: 16
+      max-parallel: 8
       matrix:
         version:
-          - '8.5.3'
-          - '8.4.18'
-          - '8.3.30'
           - '8.2.30'
+          - '8.3.30'
+          - '8.4.18'
+          - '8.5.3'
+        os:
+          - alpine
+          - debian
         variant:
-          - cli-alpine
-          - zts-alpine
           - cli
           - zts
     uses: ./.github/workflows/base-build.yml
@@ -46,29 +47,34 @@ jobs:
     with:
       version: ${{ matrix.version }}
       variant: ${{ matrix.variant }}
+      os: ${{ matrix.os }}
   build-images:
     needs: base-images
     if: needs.base-images.result == 'success'
     strategy:
-      max-parallel: 14
+      max-parallel: 20
       matrix:
         version:
           - '8.2.30'
           - '8.3.30'
           - '8.4.18'
           - '8.5.3'
+        os:
+          - alpine
+          - debian
         variant:
-          - cli-alpine
-          - fpm-alpine
-          - zts-alpine
           - apache
           - cli
           - fpm
           - zts
+        exclude:
+          - variant: apache
+            os: alpine
     uses: ./.github/workflows/image-build.yml
     secrets: inherit
     with:
       version: ${{ matrix.version }}
+      os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
       latest: '8.5.3'
   cleanup-cache:

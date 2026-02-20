@@ -51,6 +51,7 @@ RUN set -eux \
     ; update-ca-certificates \
     ; docker-php-ext-enable --ini-name 0-docker-php-ext-igbinary.ini igbinary \
     ; docker-php-ext-enable --ini-name 0-docker-php-ext-msgpack.ini msgpack \
+    ; docker-php-ext-enable --ini-name 0-docker-php-ext-sockets.ini sockets \
     ; cp $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini \
     ; sed -i "s|^expose_php\s*=\s*\(.*\)|expose_php=Off|g" $PHP_INI_DIR/php.ini \
     ; sed -i "s|^\(;\)*realpath_cache_size\s*=\s*\(.*\)|realpath_cache_size=\2|g" $PHP_INI_DIR/php.ini \

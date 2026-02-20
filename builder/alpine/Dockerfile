@@ -1,58 +1,49 @@
 ARG PHP_VERSION=8
-FROM php:${PHP_VERSION}-zts AS builder
+ARG PHP_VARIANT=cli
+FROM php:${PHP_VERSION}-${PHP_VARIANT}-alpine AS builder
 
-ENV DEBIAN_FRONTEND=noninteractive
 # Dependencies for building PHP extensions
 # Add dependencies for PIE
-ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-essential gcc git libtool m4 make"
+ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-base gcc git libtool m4 make"
 
 # Copy PIE and Composer binaries
 ENV COMPOSER_ALLOW_SUPERUSER=1
-ENV COMPOSER_PROCESS_TIMEOUT=0
+ENV COMPOSER_PROCESS_TIMEOUT=6000
 COPY --link --from=composer/composer /usr/bin/composer /usr/local/bin/composer
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
-
-# Replace http package sources with https
-RUN sed -i 's|http://|https://|g' /etc/apt/sources.list.d/* \
-    && apt-get clean \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        gnupg \
-        openssl \
-    && update-ca-certificates
 
 # Install PHP extension build dependencies
 RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
+    PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
     composer config --global github-oauth.github.com $GITHUB_TOKEN; \
-    savedAptMark="$(apt-mark showmanual)"; \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+    apk update && \
+    apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
-        libicu-dev \
-        libmagickcore-dev \
-        libmagickwand-dev \
+        curl-dev \
+        freetype-dev \
+        gettext-dev \
+        icu-dev \
+        imagemagick-dev \
+        libavif-dev \
+        libjpeg-turbo-dev \
+        libmcrypt-dev \
         libmemcached-dev \
-        libmsgpack-dev \
         libpng-dev \
-        libssl-dev \
-        `apt-cache pkgnames libavif | grep dev | sort | head -1` \
-        `apt-cache pkgnames libc-ares | grep dev | sort | head -1` \
-        `apt-cache pkgnames libc6 | grep dev | sort | head -1` \
-        `apt-cache pkgnames libfreetype | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libjpeg | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libmcrypt | grep dev | sort | head -1` \
-        `apt-cache pkgnames libmongo | grep dev | sort | head -1` \
-        `apt-cache pkgnames librabbitmq | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libsqlite3 | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libwebp | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libxsl | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames libzip | grep dev | sort | head -1` \
-        `apt-cache pkgnames libcurl4 | grep dev | grep openssl | sort -V` \
-        `apt-cache pkgnames unixodbc | grep dev | sort -V | head -1` \
-        `apt-cache pkgnames zlib | grep dev | sort -V | head -1` \
-    ; export \
+        libwebp-dev \
+        libxslt-dev \
+        libzip-dev \
+        linux-headers \
+        mongo-c-driver-dev \
+        msgpack-c-dev \
+        musl-dev \
+        openssl-dev \
+        rabbitmq-c-dev \
+        sqlite-dev \
+        unixodbc-dev \
+        zlib-dev \
+    ; \
+    export \
 		CFLAGS="$PHP_CFLAGS" \
 		CPPFLAGS="$PHP_CPPFLAGS" \
 		LDFLAGS="$PHP_LDFLAGS" \
@@ -121,7 +112,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
     pie install --skip-enable-extension osmanov/pecl-ev  && \
     pie install --skip-enable-extension php-amqp/php-amqp && \
     pie install --skip-enable-extension pecl/mcrypt  && \
-    pie install --skip-enable-extension pecl/parallel  && \
+    if [ "$PHP_ZTS" -eq 1 ]; then pie install --skip-enable-extension pecl/parallel; fi && \
     pie install --skip-enable-extension pecl/pcov  && \
     pie install --skip-enable-extension pecl/timezonedb  && \
     pie install --skip-enable-extension pecl/zip  && \
@@ -140,7 +131,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN set -eux; \
       mcrypt \
       memcached \
       mongodb \
-      parallel \
+      $( [ "$PHP_ZTS" -eq 1 ] && echo parallel ) \
       pcov \
       redis \
       swoole \
