@@ -58,7 +58,7 @@ RUN set -eux; \
         `apt-cache pkgnames unixodbc | sort -V | head -1` \
         `apt-cache pkgnames zlib | sort -V | head -1` \
     && \
-    apt-get dist-clean;
+    apt-get clean;
 
 RUN set -eux \
     ; docker-php-ext-enable --ini-name 0-docker-php-ext-igbinary.ini igbinary \
