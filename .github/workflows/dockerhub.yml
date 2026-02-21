@@ -65,19 +65,19 @@ jobs:
     strategy:
       max-parallel: 8
       matrix:
-        version:
-          - '8.2.30'
-          - '8.3.30'
-          - '8.4.18'
-          - '8.5.3'
-        os:
-          - alpine
-          - debian
         variant:
           - apache
           - cli
           - fpm
           - zts
+        os:
+          - alpine
+          - debian
+        version:
+          - '8.2.30'
+          - '8.3.30'
+          - '8.4.18'
+          - '8.5.3'
         exclude:
           - variant: apache
             os: alpine
