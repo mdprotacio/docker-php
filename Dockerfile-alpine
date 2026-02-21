@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1.4
 ARG PHP_VERSION=8
+ARG PHP_VARIANT=cli
+ARG PHP_BASE_VARIANT=cli
 ARG BASE_IMAGE_REGISTRY=public.ecr.aws
 ARG BASE_IMAGE_PATH=docker/library
 FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/composer:latest AS composer
-FROM php-${PHP_VERSION}-zts-alpine AS builder
+FROM php-${PHP_VERSION}-${PHP_BASE_VARIANT}-alpine AS builder
 
-FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${PHP_VERSION}-zts-alpine
+FROM ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${PHP_VERSION}-${PHP_VARIANT}-alpine AS runtime
 # Add dependencies for PIE
 ENV PHPIZE_DEPS="${PHPIZE_DEPS} autoconf automake build-base gcc git libtool m4 make"
 # Copy PIE and Composer binaries
@@ -58,8 +60,20 @@ RUN set -eux \
     ; cp $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini \
     ; sed -i "s|^expose_php\s*=\s*\(.*\)|expose_php=Off|g" $PHP_INI_DIR/php.ini \
     ; sed -i "s|^\(;\)*realpath_cache_size\s*=\s*\(.*\)|realpath_cache_size=\2|g" $PHP_INI_DIR/php.ini \
-    ; sed -i "s|^\(;\)*realpath_cache_ttl\s*=\s*\(.*\)|realpath_cache_ttl=\2|g" $PHP_INI_DIR/php.ini \
-    ;
+    ; sed -i "s|^\(;\)*realpath_cache_ttl\s*=\s*\(.*\)|realpath_cache_ttl=\2|g" $PHP_INI_DIR/php.ini
 
 WORKDIR /var/www/html
+
+FROM runtime as cli
+CMD ["php", "-a"]
+
+FROM runtime as fpm
+RUN set -eux \
+    ; sed -i "s/;emergency_restart_threshold\s*=\s*.*/emergency_restart_threshold = 10/g" $PHP_INI_DIR/../php-fpm.conf \
+    ; sed -i "s/;emergency_restart_interval\s*=\s*.*/emergency_restart_interval = 1m/g" $PHP_INI_DIR/../php-fpm.conf \
+    ; sed -i "s/;process_control_timeout\s*=\s*.*/process_control_timeout = 10s/g" $PHP_INI_DIR/../php-fpm.conf \
+    ;
+CMD ["php-fpm"]
+
+FROM runtime as zts
 CMD ["php", "-a"]

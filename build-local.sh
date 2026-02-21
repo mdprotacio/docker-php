@@ -183,13 +183,7 @@ build_final_image() {
     echo -e "${GREEN}Building FINAL image for PHP ${version} ${variant}${NC}"
     echo -e "${GREEN}======================================${NC}"
 
-    local dockerfile="Dockerfile-${variant}"
     local image_tag="php:${version}-${variant}"
-
-    if [ ! -f "$dockerfile" ]; then
-        echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
-        exit 1
-    fi
 
     # Determine base variant name and use resolved OS (priority: function arg, else derive from variant)
     read -r name derived_os <<< "$(get_variant_parts "$variant")"
@@ -226,9 +220,20 @@ build_final_image() {
     # Split DOCKER_BUILD_OPTS into an array (safe splitting)
     read -r -a DOCKER_BUILD_OPTS_ARR <<< "$DOCKER_BUILD_OPTS"
 
+    local dockerfile="Dockerfile-${os}"
+
+    if [ ! -f "$dockerfile" ]; then
+        echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
+        exit 1
+    fi
+
+
     docker buildx build "${DOCKER_BUILD_OPTS_ARR[@]}" \
         --file "$dockerfile" \
+        --target "$name" \
         --build-arg PHP_VERSION="$version" \
+        --build-arg PHP_VARIANT="$name" \
+        --build-arg PHP_BASE_VARIANT="$base_name" \
         $build_contexts \
         --tag "$image_tag" \
         .
