@@ -69,6 +69,7 @@ jobs:
           # Use the same hashFiles() pattern you used in your build step.
           echo "scope_hash=${{ hashFiles('builder/**/Dockerfile') }}" >> $GITHUB_OUTPUT
       - name: Build PHP ${{ inputs.version }} ${{ steps.compute_variants.outputs.variant }} (prebuild)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
