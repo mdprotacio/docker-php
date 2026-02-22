@@ -132,7 +132,7 @@ build_base_image() {
     echo -e "${GREEN}Building BASE image for PHP ${version} ${base_name} (os: ${os})${NC}"
     echo -e "${GREEN}======================================${NC}"
 
-    local dockerfile="builder/${os}/Dockerfile"
+    local dockerfile="builder/${os}/Dockerfile-build"
     local tag_variant="$base_name"
     if [ "$os" != "debian" ]; then
         tag_variant="${tag_variant}-${os}"
@@ -220,7 +220,7 @@ build_final_image() {
     # Split DOCKER_BUILD_OPTS into an array (safe splitting)
     read -r -a DOCKER_BUILD_OPTS_ARR <<< "$DOCKER_BUILD_OPTS"
 
-    local dockerfile="Dockerfile-${os}"
+    local dockerfile="builder/${os}/Dockerfile-image"
 
     if [ ! -f "$dockerfile" ]; then
         echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
