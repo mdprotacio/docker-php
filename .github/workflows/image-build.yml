@@ -119,8 +119,8 @@ jobs:
           sbom: true
           # Push only when running on main or master branch (for push, workflow_dispatch, or workflow_call events)
           push: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ inputs.os }}-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.os }}-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
