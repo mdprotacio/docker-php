@@ -17,6 +17,8 @@ VARIANT=""
 BUILD_MODE=""
 GITHUB_TOKEN=""
 DOCKER_BUILD_OPTS=""
+OS=""
+OS_SET=0
 
 # Function to print usage
 usage() {
@@ -26,6 +28,7 @@ Usage: $0 [OPTIONS]
 Options:
     -v, --version VERSION       PHP version (e.g., 8.4.15, 8.3.28)
     -t, --variant VARIANT       Variant type (cli, cli-alpine, zts, zts-alpine, apache, fpm, fpm-alpine)
+    -s, --os OS                 Base builder OS (debian or alpine). If omitted, derived from VARIANT ("-alpine" suffix means alpine)
     -m, --mode MODE             Build mode: 'base' for prebuild images, 'final' for final images, 'both' for both
     -g, --github-token TOKEN    GitHub token (optional, will try to retrieve from composer if not provided)
     -o, --docker-opts OPTS      Extra options passed to 'docker buildx build' (e.g. \`--no-cache --progress=plain\`)
@@ -80,7 +83,31 @@ validate_variant() {
     exit 1
 }
 
-# Function to check if variant needs base build
+# Helper: split a variant into name and os
+# Outputs: <name> <os> (os is 'debian' or 'alpine')
+get_variant_parts() {
+    local variant=$1
+    if [[ "$variant" == *"-alpine" ]]; then
+        echo "${variant%-alpine} alpine"
+    else
+        echo "$variant debian"
+    fi
+}
+
+# Helper: map final variant name to base variant name (cli/zts)
+get_base_name() {
+    local name=$1
+    case "$name" in
+        apache|fpm)
+            echo "cli"
+            ;;
+        *)
+            echo "$name"
+            ;;
+    esac
+}
+
+# Function to check if variant needs base build (base variants are cli and zts)
 needs_base_build() {
     local variant=$1
     case "$variant" in
@@ -93,34 +120,24 @@ needs_base_build() {
     esac
 }
 
-# Function to get base variant for final builds
-get_base_variant() {
-    local variant=$1
-    case "$variant" in
-        apache|fpm)
-            echo "cli"
-            ;;
-        fpm-alpine)
-            echo "cli-alpine"
-            ;;
-        cli|cli-alpine|zts|zts-alpine)
-            echo "$variant"
-            ;;
-    esac
-}
-
 # Function to build base (prebuild) image
+# Arguments: version, base_name, os, github_token
 build_base_image() {
     local version=$1
-    local variant=$2
-    local github_token=$3
+    local base_name=$2
+    local os=$3
+    local github_token=$4
 
     echo -e "${GREEN}======================================${NC}"
-    echo -e "${GREEN}Building BASE image for PHP ${version} ${variant}${NC}"
+    echo -e "${GREEN}Building BASE image for PHP ${version} ${base_name} (os: ${os})${NC}"
     echo -e "${GREEN}======================================${NC}"
 
-    local dockerfile="builder/${variant}/Dockerfile"
-    local image_tag="php:${version}-${variant}-prebuild"
+    local dockerfile="builder/${os}/Dockerfile-build"
+    local tag_variant="$base_name"
+    if [ "$os" != "debian" ]; then
+        tag_variant="${tag_variant}-${os}"
+    fi
+    local image_tag="php:${version}-${tag_variant}-prebuild"
 
     if [ ! -f "$dockerfile" ]; then
         echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
@@ -138,6 +155,7 @@ build_base_image() {
             --pull \
             --file "$dockerfile" \
             --build-arg PHP_VERSION="$version" \
+            --build-arg PHP_VARIANT="$base_name" \
             --tag "$image_tag" \
             --secret id=github_token,src=/dev/stdin \
             .
@@ -147,6 +165,7 @@ build_base_image() {
             --pull \
             --file "$dockerfile" \
             --build-arg PHP_VERSION="$version" \
+            --build-arg PHP_VARIANT="$base_name" \
             --tag "$image_tag" \
             .
     fi
@@ -158,28 +177,29 @@ build_base_image() {
 build_final_image() {
     local version=$1
     local variant=$2
+    local resolved_os=$3
 
     echo -e "${GREEN}======================================${NC}"
     echo -e "${GREEN}Building FINAL image for PHP ${version} ${variant}${NC}"
     echo -e "${GREEN}======================================${NC}"
 
-    local dockerfile="Dockerfile-${variant}"
     local image_tag="php:${version}-${variant}"
 
-    if [ ! -f "$dockerfile" ]; then
-        echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
-        exit 1
+    # Determine base variant name and use resolved OS (priority: function arg, else derive from variant)
+    read -r name derived_os <<< "$(get_variant_parts "$variant")"
+    base_name=$(get_base_name "$name")
+    os="${resolved_os:-$derived_os}"
+    base_tag_variant="$base_name"
+    if [ "$os" != "debian" ]; then
+        base_tag_variant="${base_tag_variant}-${os}"
     fi
 
-    # Determine which base variant is required for this variant
-    local base_variant=$(get_base_variant "$variant")
-
     # Check if required prebuild image exists locally
-    local prebuild_image="php:${version}-${base_variant}-prebuild"
+    local prebuild_image="php:${version}-${base_tag_variant}-prebuild"
     if ! docker image inspect "$prebuild_image" >/dev/null 2>&1; then
         echo -e "${RED}Error: Required prebuild image not found: ${prebuild_image}${NC}"
         echo "Tip: Build it first with:"
-        echo "  $0 --version $version --variant $base_variant --mode base"
+        echo "  $0 --version $version --variant ${base_name}$( [ "$os" != "debian" ] && echo "-${os}" ) --mode base"
         echo "Or use:"
         echo "  $0 --version $version --variant $variant --mode both"
         exit 1
@@ -188,10 +208,10 @@ build_final_image() {
     local build_contexts=""
 
     # Only add the specific build context needed for this variant
-    build_contexts="--build-context php-${version}-${base_variant}=docker-image://php:${version}-${base_variant}-prebuild"
+    build_contexts="--build-context php-${version}-${base_tag_variant}=docker-image://php:${version}-${base_tag_variant}-prebuild"
 
     echo -e "${YELLOW}Building: $image_tag${NC}"
-    echo -e "${YELLOW}Using base context: php-${version}-${base_variant}-prebuild${NC}"
+    echo -e "${YELLOW}Using base context: php-${version}-${base_tag_variant}-prebuild${NC}"
 
     # Pre-pull official base image to ensure it's up-to-date
     echo -e "${YELLOW}Ensuring official base image is up-to-date: php:${version}-${variant}${NC}"
@@ -200,9 +220,20 @@ build_final_image() {
     # Split DOCKER_BUILD_OPTS into an array (safe splitting)
     read -r -a DOCKER_BUILD_OPTS_ARR <<< "$DOCKER_BUILD_OPTS"
 
+    local dockerfile="builder/${os}/Dockerfile-image"
+
+    if [ ! -f "$dockerfile" ]; then
+        echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"
+        exit 1
+    fi
+
+
     docker buildx build "${DOCKER_BUILD_OPTS_ARR[@]}" \
         --file "$dockerfile" \
+        --target "$name" \
         --build-arg PHP_VERSION="$version" \
+        --build-arg PHP_VARIANT="$name" \
+        --build-arg PHP_BASE_VARIANT="$base_name" \
         $build_contexts \
         --tag "$image_tag" \
         .
@@ -219,6 +250,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         -t|--variant)
             VARIANT="$2"
+            shift 2
+            ;;
+        -s|--os)
+            OS="$2"
+            OS_SET=1
             shift 2
             ;;
         -m|--mode)
@@ -268,6 +304,18 @@ if [[ ! "$BUILD_MODE" =~ ^(base|final|both)$ ]]; then
     exit 1
 fi
 
+if [ "$OS_SET" -eq 1 ]; then
+    # user provided OS: normalize input and validate
+    if [ "$OS" != "debian" ] && [ "$OS" != "alpine" ]; then
+        echo -e "${RED}Error: Invalid OS '$OS'. Must be 'debian' or 'alpine'${NC}"
+        exit 1
+    fi
+else
+    # derive from variant (variants with -alpine map to alpine, otherwise debian)
+    read -r _derived_name _derived_os <<< "$(get_variant_parts "$VARIANT")"
+    OS="${_derived_os:-debian}"
+fi
+
 # Get GitHub token from composer if not provided
 if [ -z "$GITHUB_TOKEN" ]; then
     GITHUB_TOKEN=$(get_github_token_from_composer)
@@ -279,6 +327,7 @@ echo -e "${GREEN}Build Configuration${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo "PHP Version:       $PHP_VERSION"
 echo "Variant:           $VARIANT"
+echo "OS:                $OS"
 echo "Build Mode:        $BUILD_MODE"
 echo "GitHub Token:      $([ -n "$GITHUB_TOKEN" ] && echo "Provided" || echo "Not provided")"
 echo "Docker build opts:  $([ -n "$DOCKER_BUILD_OPTS" ] && echo "$DOCKER_BUILD_OPTS" || echo "None")"
@@ -294,28 +343,45 @@ fi
 # Execute build based on mode
 case "$BUILD_MODE" in
     base)
-        if needs_base_build "$VARIANT"; then
-            build_base_image "$PHP_VERSION" "$VARIANT" "$GITHUB_TOKEN"
+        # For base, we need the base variant name and the OS
+        read -r name name_os <<< "$(get_variant_parts "$VARIANT")"
+        # If user provided an explicit OS, prefer that
+        if [ -n "$OS" ]; then
+            name_os="$OS"
+        fi
+        base_name=$(get_base_name "$name")
+        if needs_base_build "$base_name"; then
+            build_base_image "$PHP_VERSION" "$base_name" "$name_os" "$GITHUB_TOKEN"
         else
             echo -e "${RED}Error: Variant '$VARIANT' does not have a base build${NC}"
             exit 1
         fi
         ;;
     final)
-        build_final_image "$PHP_VERSION" "$VARIANT"
+        build_final_image "$PHP_VERSION" "$VARIANT" "$OS"
         ;;
     both)
+        # Determine whether the variant itself requires a base build, otherwise build the appropriate base
         if needs_base_build "$VARIANT"; then
-            build_base_image "$PHP_VERSION" "$VARIANT" "$GITHUB_TOKEN"
+            # variant is something like cli or cli-alpine / zts etc.
+            read -r name name_os <<< "$(get_variant_parts "$VARIANT")"
+            if [ -n "$OS" ]; then
+                name_os="$OS"
+            fi
+            build_base_image "$PHP_VERSION" "$name" "$name_os" "$GITHUB_TOKEN"
         else
-            # For variants without their own base build, we need the appropriate base variant
-            base_variant=$(get_base_variant "$VARIANT")
-            echo -e "${YELLOW}Variant '$VARIANT' uses base variant '$base_variant'${NC}"
-            echo -e "${YELLOW}Building required prebuild image for '$base_variant'${NC}"
+            # For variants without their own base build, we need the appropriate base variant and same OS
+            read -r name name_os <<< "$(get_variant_parts "$VARIANT")"
+            if [ -n "$OS" ]; then
+                name_os="$OS"
+            fi
+            base_name=$(get_base_name "$name")
+            echo -e "${YELLOW}Variant '$VARIANT' uses base variant '${base_name}' (os: ${name_os})${NC}"
+            echo -e "${YELLOW}Building required prebuild image for '${base_name}'${NC}"
             echo ""
-            build_base_image "$PHP_VERSION" "$base_variant" "$GITHUB_TOKEN"
+            build_base_image "$PHP_VERSION" "$base_name" "$name_os" "$GITHUB_TOKEN"
         fi
-        build_final_image "$PHP_VERSION" "$VARIANT"
+        build_final_image "$PHP_VERSION" "$VARIANT" "$OS"
         ;;
 esac
 

@@ -2,6 +2,6 @@
 !.dockerignore
 !.gitignore
 !.github
-!Dockerfile*
 !LICENSE
+!README.md
 !builder

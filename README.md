@@ -1,5 +1,5 @@
 # PHP Docker Images
-[![Build and Push to Registry](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml/badge.svg)](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml)
+[![Build PHP Images and Push to Registries](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml/badge.svg?branch=master)](https://github.com/mdprotacio/docker-php/actions/workflows/dockerhub.yml)
 
 PHP container images preinstalled with commonly used extensions for web development.
 
@@ -28,14 +28,16 @@ Preinstalled extensions apart from the ones provided by the official PHP images:
 - mongodb
 - msgpack
 - mysqli
+- parallel (for ZTS variants only)
 - pcntl
 - pcov
 - pdo
 - pdo_mysql
 - pdo_sqlite
-- pdo_sqlsrv
+- pdo_sqlsrv (beta for PHP8.4, not yet available for PHP8.5, https://github.com/microsoft/msphpsql/releases)
 - redis
 - sockets
+- sqlsrv (beta for PHP8.4, not yet available for PHP8.5, https://github.com/microsoft/msphpsql/releases)
 - swoole
 - timezonedb
 - xdebug
@@ -44,7 +46,7 @@ Preinstalled extensions apart from the ones provided by the official PHP images:
 - zip
 
 ---
-Copyright (C) 2025 Melvin D. Protacio
+Copyright (C) 2026 Melvin D. Protacio
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, version 3.
 

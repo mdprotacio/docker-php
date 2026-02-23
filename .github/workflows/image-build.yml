@@ -12,6 +12,13 @@ on:
       variant:
         required: true
         type: string
+      os:
+        required: true
+        type: string
+      base_image_registry:
+        required: false
+        type: string
+        default: 'public.ecr.aws'
 
 jobs:
   build-image:
@@ -28,6 +35,20 @@ jobs:
       # Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Repo
         uses: actions/checkout@v6
+      - name: Setup variants
+        id: compute_variants
+        run: |
+          echo "variant_os=${{ inputs.variant }}${{ inputs.os != 'debian' && format('-{0}', inputs.os) || '' }}" >> $GITHUB_OUTPUT
+          echo "base_variant=${{ inputs.variant == 'zts' && format('{0}', inputs.variant) || 'cli' }}" >> $GITHUB_OUTPUT
+          echo "base_variant_os=${{ inputs.variant == 'zts' && format('{0}', inputs.variant) || 'cli' }}${{ inputs.os != 'debian' && format('-{0}', inputs.os) || '' }}" >> $GITHUB_OUTPUT
+      - name: Setup base image path
+        id: image_path
+        run: |
+          if [ "${{ inputs.base_image_registry }}" = "public.ecr.aws" ]; then
+            echo "path=docker/library" >> $GITHUB_OUTPUT
+          else
+            echo "path=library" >> $GITHUB_OUTPUT
+          fi
       - name: Set semver tags
         id: semver
         run: |
@@ -44,19 +65,20 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/php
             docker.io/${{ github.repository_owner }}/php
           tags: |
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-${{ inputs.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-${{ inputs.variant }}
-            type=raw,value=,prefix=${{ steps.semver.outputs.major }}-${{ inputs.variant }},enable=${{ inputs.version == inputs.latest }}
-            type=raw,value=${{ inputs.variant }},enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=${{ steps.compute_variants.outputs.variant_os }},prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}.${{ steps.semver.outputs.patch || 0 }}-
+            type=raw,value=${{ steps.compute_variants.outputs.variant_os }},prefix=${{ steps.semver.outputs.major }}.${{ steps.semver.outputs.minor }}-
+            type=raw,value=${{ steps.compute_variants.outputs.variant_os }},prefix=${{ steps.semver.outputs.major }}-,enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=${{ steps.compute_variants.outputs.variant_os }},enable=${{ inputs.version == inputs.latest }}
+            type=raw,value=latest,enable=${{ inputs.version == inputs.latest && steps.compute_variants.outputs.variant_os == 'cli'}}
           labels: |
-            org.opencontainers.image.title=PHP${{ inputs.version }} ${{ inputs.variant }}
-            org.opencontainers.image.description=PHP${{ inputs.version }} ${{ inputs.variant }} preinstalled with various extensions
+            org.opencontainers.image.title=PHP${{ inputs.version }} ${{ steps.compute_variants.outputs.variant_os }}
+            org.opencontainers.image.description=PHP${{ inputs.version }} ${{ steps.compute_variants.outputs.variant_os }} preinstalled with various extensions
             org.opencontainers.image.vendor=MDP Software Development Services
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.head_ref || github.ref_name }}/Dockerfile-${{ inputs.variant }}
-            org.opencontainers.image.version=${{ inputs.version }}-${{ inputs.variant }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}/blob/${{ github.head_ref || github.ref_name }}/builder/${{ inputs.os }}/Dockerfile-image
+            org.opencontainers.image.version=${{ inputs.version }}-${{ steps.compute_variants.outputs.variant_os }}
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.base.name=docker.io/library/php:${{ inputs.version }}-${{ inputs.variant }}
+            org.opencontainers.image.base.name=docker.io/library/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.variant_os }}
             org.opencontainers.image.licenses=GNU GPLv3
             org.opencontainers.image.authors=Melvin D. Protacio <mdprotacio@outlook.com>
       - name: Set up QEMU
@@ -75,43 +97,42 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compute scope hash for this combo
-        id: compute_hash
-        run: |
-          # This step only echoes the expression into an output, evaluated by Actions
-          # Use the same hashFiles() pattern you used in your build step.
-          echo "scope_hash=${{ hashFiles('Dockerfile-*') }}" >> $GITHUB_OUTPUT
-      - name: Build PHP ${{ inputs.version }} ${{ inputs.variant }} (use cache)
+      - name: Build PHP ${{ inputs.version }} ${{ steps.compute_variants.outputs.variant_os }}
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile-${{ inputs.variant }}
+          file: builder/${{ inputs.os }}/Dockerfile-image
           build-args: |
             PHP_VERSION=${{ inputs.version }}
+            PHP_VARIANT=${{ inputs.variant }}
+            PHP_BASE_VARIANT=${{ steps.compute_variants.outputs.base_variant }}
+            BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
+            BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
+          target: ${{ inputs.variant }}
           build-contexts: |
-            php-${{ inputs.version }}-cli=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-cli-prebuild
-            php-${{ inputs.version }}-cli-alpine=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-cli-alpine-prebuild
-            php-${{ inputs.version }}-zts=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-zts-prebuild
-            php-${{ inputs.version }}-zts-alpine=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-zts-alpine-prebuild
+            php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
           pull: ${{ github.event_name == 'pull_request' }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           provenance: mode=max
           sbom: true
-          push: ${{ github.event_name != 'pull_request' }}
+          # Push only when running on main or master branch (for push, workflow_dispatch, or workflow_call events)
+          push: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
       - name: Publish attestation
-        if: github.event_name != 'pull_request'
+        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/php
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
       - name: Publish attestation
-        if: github.event_name != 'pull_request'
+        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: docker.io/${{ github.repository_owner }}/php

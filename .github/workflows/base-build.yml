@@ -9,6 +9,13 @@ on:
       variant:
         required: true
         type: string
+      os:
+        required: true
+        type: string
+      base_image_registry:
+        required: false
+        type: string
+        default: 'public.ecr.aws'
 
 jobs:
   build-image:
@@ -25,6 +32,18 @@ jobs:
       # Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout Repo
         uses: actions/checkout@v6
+      - name: Setup variants
+        id: compute_variants
+        run: |
+          echo "variant=${{ inputs.variant }}${{ inputs.os != 'debian' && format('-{0}', inputs.os) || '' }}" >> $GITHUB_OUTPUT
+      - name: Setup base image path
+        id: image_path
+        run: |
+          if [ "${{ inputs.base_image_registry }}" = "public.ecr.aws" ]; then
+            echo "path=docker/library" >> $GITHUB_OUTPUT
+          else
+            echo "path=library" >> $GITHUB_OUTPUT
+          fi
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -32,7 +51,7 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/cache/php
           tags: |
-            type=raw,value=,prefix=${{ inputs.version }}-${{ inputs.variant }}-prebuild
+            type=raw,value=${{ steps.compute_variants.outputs.variant }},prefix=${{ inputs.version }}-,suffix=-prebuild
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -48,14 +67,18 @@ jobs:
         run: |
           # This step only echoes the expression into an output, evaluated by Actions
           # Use the same hashFiles() pattern you used in your build step.
-          echo "scope_hash=${{ hashFiles('builder/**/Dockerfile') }}" >> $GITHUB_OUTPUT
-      - name: Build PHP ${{ inputs.version }} ${{ inputs.variant }} (prebuild)
+          echo "scope_hash=${{ hashFiles('builder/**/Dockerfile*') }}" >> $GITHUB_OUTPUT
+      - name: Build PHP ${{ inputs.version }} ${{ steps.compute_variants.outputs.variant }} (prebuild)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: builder/${{ inputs.variant }}/Dockerfile
+          file: builder/${{ inputs.os }}/Dockerfile-build
           build-args: |
             PHP_VERSION=${{ inputs.version }}
+            PHP_VARIANT=${{ inputs.variant }}
+            BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
+            BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
           pull: ${{ github.event_name == 'pull_request' }}
@@ -64,8 +87,15 @@ jobs:
           provenance: mode=max
           sbom: true
           push: true
-          cache-from: ${{ github.run_attempt == 1 && format('type=registry,ref=ghcr.io/{0}/cache/php:{1}-{2}-{3}', github.repository_owner, inputs.version, inputs.variant, steps.compute_hash.outputs.scope_hash) || '' }}
-          cache-to: type=registry,mode=max,ref=${{ format('ghcr.io/{0}/cache/php:{1}-{2}-{3}', github.repository_owner, inputs.version, inputs.variant, steps.compute_hash.outputs.scope_hash) }}
+          cache-from: ${{ github.run_attempt == 1 && format('type=registry,ref=ghcr.io/{0}/cache/php:{1}-{2}-{3}', github.repository_owner, inputs.version, steps.compute_variants.outputs.variant, steps.compute_hash.outputs.scope_hash) || '' }}
+          cache-to: type=registry,mode=max,ref=${{ format('ghcr.io/{0}/cache/php:{1}-{2}-{3}', github.repository_owner, inputs.version, steps.compute_variants.outputs.variant, steps.compute_hash.outputs.scope_hash) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+      - name: Publish attestation
+        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/cache/php
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
