@@ -34,10 +34,10 @@ Preinstalled extensions apart from the ones provided by the official PHP images:
 - pdo
 - pdo_mysql
 - pdo_sqlite
-- pdo_sqlsrv (beta for PHP8.4, not yet available for PHP8.5, https://github.com/microsoft/msphpsql/releases)
+- pdo_sqlsrv
 - redis
 - sockets
-- sqlsrv (beta for PHP8.4, not yet available for PHP8.5, https://github.com/microsoft/msphpsql/releases)
+- sqlsrv
 - swoole
 - timezonedb
 - xdebug
