@@ -87,7 +87,7 @@ jobs:
       version: ${{ matrix.version }}
       os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
-      latest: '8.5.3'
+      latest: '8.5.4'
       base_image_registry: ${{ github.event.inputs.base_image_registry || 'public.ecr.aws' }}
   cleanup-cache:
     needs: build-images
