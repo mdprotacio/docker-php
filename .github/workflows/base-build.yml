@@ -80,6 +80,7 @@ jobs:
             PHP_VARIANT=${{ inputs.variant }}
             BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
             BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
+            BUILDKIT_INLINE_CACHE=1
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
           pull: ${{ github.run_attempt == 1 }}
@@ -88,7 +89,7 @@ jobs:
           provenance: mode=max
           sbom: true
           push: true
-          cache-from: ${{ github.run_attempt == 1 && format('type=registry,ref=ghcr.io/{0}/cache/php:{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.variant) || '' }}
+          cache-from: ${{ github.event_name != 'workflow_dispatch' && format('type=registry,ref=ghcr.io/{0}/cache/php:{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.variant) || '' }}
           cache-to: type=registry,mode=max,ref=${{ format('ghcr.io/{0}/cache/php:{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.variant) }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

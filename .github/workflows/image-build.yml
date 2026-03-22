@@ -116,9 +116,12 @@ jobs:
             PHP_BASE_VARIANT=${{ steps.compute_variants.outputs.base_variant }}
             BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
             BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
+            BUILDKIT_INLINE_CACHE=1
           target: ${{ inputs.variant }}
           build-contexts: |
             php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
+          cache-from: ${{ github.event_name != 'workflow_dispatch' && format('type=gha,scope={0}/cache/php:{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) || '' }}
+          cache-to: type=gha,mode=max,scope=${{ format('{0}/cache/php:{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) }}
           pull: ${{ github.run_attempt == 1 }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
