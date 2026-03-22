@@ -82,7 +82,7 @@ jobs:
             BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
           secrets: |
             github_token=${{ secrets.GITHUB_TOKEN }}
-          pull: ${{ github.event_name == 'pull_request' }}
+          pull: ${{ github.run_attempt == 1 }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           provenance: mode=max

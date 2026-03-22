@@ -119,7 +119,7 @@ jobs:
           target: ${{ inputs.variant }}
           build-contexts: |
             php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
-          pull: ${{ github.event_name == 'pull_request' }}
+          pull: ${{ github.run_attempt == 1 }}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           provenance: mode=max
