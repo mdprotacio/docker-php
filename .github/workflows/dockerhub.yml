@@ -9,7 +9,7 @@ on:
   push:
     branches: [ master ]
   schedule:
-    - cron: '0 0 1,16 * *'
+    - cron: '0 0 */2 * *'
   workflow_dispatch:
     inputs:
       base_image_registry:
@@ -39,7 +39,6 @@ permissions:
 jobs:
   base-images:
     strategy:
-      max-parallel: 8
       matrix:
         version:
           - '8.2.30'
@@ -63,7 +62,7 @@ jobs:
     needs: base-images
     if: needs.base-images.result == 'success'
     strategy:
-      max-parallel: 8
+      max-parallel: 4
       matrix:
         os:
           - alpine
