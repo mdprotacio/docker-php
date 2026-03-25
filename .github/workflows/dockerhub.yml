@@ -15,7 +15,7 @@ on:
       base_image_registry:
         description: 'Base PHP image registry (docker.io, public.ecr.aws, etc.)'
         required: false
-        default: 'docker.io'
+        default: 'public.ecr.aws'
         type: choice
         options:
           - public.ecr.aws
@@ -58,7 +58,7 @@ jobs:
       version: ${{ matrix.version }}
       variant: ${{ matrix.variant }}
       os: ${{ matrix.os }}
-      base_image_registry: ${{ github.event.inputs.base_image_registry || 'public.ecr.aws' }}
+      base_image_registry: ${{ github.event.inputs.base_image_registry || 'docker.io' }}
   build-images:
     needs: base-images
     if: needs.base-images.result == 'success'
@@ -88,7 +88,7 @@ jobs:
       os: ${{ matrix.os }}
       variant: ${{ matrix.variant }}
       latest: '8.5.4'
-      base_image_registry: ${{ github.event.inputs.base_image_registry || 'public.ecr.aws' }}
+      base_image_registry: ${{ github.event.inputs.base_image_registry || 'docker.io' }}
   cleanup-cache:
     needs: build-images
     if: github.event_name == 'pull_request' && needs.build-images.result == 'success'
