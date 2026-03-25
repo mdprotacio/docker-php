@@ -37,6 +37,9 @@ permissions:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
+  cleanup-cache:
+    uses: ./.github/workflows/github-cache-cleanup.yml
+    secrets: inherit
   base-images:
     strategy:
       max-parallel: 4
@@ -60,7 +63,7 @@ jobs:
       os: ${{ matrix.os }}
       base_image_registry: ${{ github.event.inputs.base_image_registry || 'docker.io' }}
   build-images:
-    needs: base-images
+    needs: [cleanup-cache, base-images]
     if: needs.base-images.result == 'success'
     strategy:
       max-parallel: 4
@@ -89,11 +92,6 @@ jobs:
       variant: ${{ matrix.variant }}
       latest: '8.5.4'
       base_image_registry: ${{ github.event.inputs.base_image_registry || 'docker.io' }}
-  cleanup-cache:
-    needs: build-images
-    if: github.event_name == 'pull_request' && needs.build-images.result == 'success'
-    uses: ./.github/workflows/github-cache-cleanup.yml
-    secrets: inherit
   build-complete:
     needs: [base-images, build-images, cleanup-cache]
     if: always()

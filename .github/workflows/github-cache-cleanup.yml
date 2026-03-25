@@ -25,6 +25,7 @@ jobs:
           gh --version
 
       - name: Purge all caches
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.run_attempt > 1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
