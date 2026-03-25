@@ -9,7 +9,7 @@ on:
   push:
     branches: [ master ]
   schedule:
-    - cron: '0 0 */2 * *'
+    - cron: '0 0 */4 * *'
   workflow_dispatch:
     inputs:
       base_image_registry:
@@ -39,6 +39,7 @@ permissions:
 jobs:
   base-images:
     strategy:
+      max-parallel: 4
       matrix:
         version:
           - '8.2.30'
