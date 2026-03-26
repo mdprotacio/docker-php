@@ -120,7 +120,7 @@ jobs:
           target: ${{ inputs.variant }}
           build-contexts: |
             php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
-          cache-from: ${{ github.event_name != 'workflow_dispatch' && format('type=gha,scope={0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) || '' }}
+          cache-from: type=gha,scope=${{ format('{0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) }}
           cache-to: ${{ steps.compute_variants.outputs.variant_os == steps.compute_variants.outputs.base_variant_os && format('type=gha,mode=min,scope={0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) || '' }}
           pull: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'}}
           builder: ${{ steps.buildx.outputs.name }}
