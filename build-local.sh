@@ -220,7 +220,7 @@ build_final_image() {
     # Split DOCKER_BUILD_OPTS into an array (safe splitting)
     read -r -a DOCKER_BUILD_OPTS_ARR <<< "$DOCKER_BUILD_OPTS"
 
-    local dockerfile="builder/${os}/Dockerfile-image"
+    local dockerfile="builder/${os}/Dockerfile"
 
     if [ ! -f "$dockerfile" ]; then
         echo -e "${RED}Error: Dockerfile not found: $dockerfile${NC}"

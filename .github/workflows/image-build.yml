@@ -82,9 +82,16 @@ jobs:
             org.opencontainers.image.licenses=GNU GPLv3
             org.opencontainers.image.authors=Melvin D. Protacio <mdprotacio@outlook.com>
       - name: Set up QEMU
+        id: qemu
         uses: docker/setup-qemu-action@v4
+        with:
+          platforms: linux/amd64,linux/arm64
       - name: Set up Docker Buildx
+        id: buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          cleanup: false
+          platforms: ${{ steps.qemu.outputs.platforms }}
       - name: Login to Dockerhub
         uses: docker/login-action@v4
         with:
@@ -102,17 +109,20 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: builder/${{ inputs.os }}/Dockerfile-image
+          file: builder/${{ inputs.os }}/Dockerfile
           build-args: |
             PHP_VERSION=${{ inputs.version }}
             PHP_VARIANT=${{ inputs.variant }}
             PHP_BASE_VARIANT=${{ steps.compute_variants.outputs.base_variant }}
             BASE_IMAGE_REGISTRY=${{ inputs.base_image_registry }}
             BASE_IMAGE_PATH=${{ steps.image_path.outputs.path }}
+            BUILDKIT_INLINE_CACHE=1
           target: ${{ inputs.variant }}
           build-contexts: |
             php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
-          pull: ${{ github.event_name == 'pull_request' }}
+          cache-from: type=gha,scope=${{ format('{0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) }}
+          cache-to: ${{ steps.compute_variants.outputs.variant_os == steps.compute_variants.outputs.base_variant_os && format('type=gha,mode=min,scope={0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) || '' }}
+          pull: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'}}
           builder: ${{ steps.buildx.outputs.name }}
           platforms: linux/amd64,linux/arm64
           provenance: mode=max

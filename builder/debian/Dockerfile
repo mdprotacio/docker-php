@@ -20,6 +20,7 @@ COPY --link --from=builder /root/.pie/ /root/.pie/
 # Replace http package sources with https
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    set -eux; \
     sed -i 's|http://|https://|g' /etc/apt/sources.list.d/* \
     && apt-get clean \
     && apt-get update \
@@ -27,15 +28,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ca-certificates \
         gnupg \
         openssl \
-    && update-ca-certificates
-
-# Install dependencies
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    set -eux; \
-    apt-get clean; \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
+    && update-ca-certificates \
+    && apt-get install -y --no-install-recommends \
 # Add helper tools for development \
         curl \
         gettext-base \
