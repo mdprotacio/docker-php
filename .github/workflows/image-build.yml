@@ -90,8 +90,9 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v4
         with:
-          cleanup: false
+          name: buildx-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}
           platforms: ${{ steps.qemu.outputs.platforms }}
+          cleanup: false
       - name: Login to Dockerhub
         uses: docker/login-action@v4
         with:
@@ -122,8 +123,8 @@ jobs:
             php-${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}=docker-image://ghcr.io/${{ github.repository_owner }}/cache/php:${{ inputs.version }}-${{ steps.compute_variants.outputs.base_variant_os }}-prebuild
           cache-from: type=gha,scope=${{ format('{0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) }}
           cache-to: ${{ steps.compute_variants.outputs.variant_os == steps.compute_variants.outputs.base_variant_os && format('type=gha,mode=min,scope={0}-{1}-{2}', github.repository_owner, inputs.version, steps.compute_variants.outputs.base_variant_os) || '' }}
-          pull: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'}}
           builder: ${{ steps.buildx.outputs.name }}
+          pull: true
           platforms: linux/amd64,linux/arm64
           provenance: mode=max
           sbom: true

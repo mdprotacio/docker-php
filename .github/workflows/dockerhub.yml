@@ -42,7 +42,7 @@ jobs:
     secrets: inherit
   base-images:
     strategy:
-      max-parallel: 4
+      max-parallel: 8
       matrix:
         version:
           - '8.2.30'
