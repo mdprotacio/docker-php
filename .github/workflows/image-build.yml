@@ -85,7 +85,6 @@ jobs:
         id: qemu
         uses: docker/setup-qemu-action@v4
         with:
-          image: tonistiigi/binfmt:buildkit-latest
           platforms: linux/amd64,linux/arm64
       - name: Set up Docker Buildx
         id: buildx
