@@ -56,7 +56,8 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
         `apt-cache pkgnames zlib | grep dev | sort -V | head -1` \
     ;
 
-RUN --mount=type=cache,target=/tmp/pear,sharing=locked \
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    --mount=type=cache,target=/tmp/pear,sharing=locked \
     set -eux; \
     export \
 		CFLAGS="$PHP_CFLAGS" \

@@ -48,7 +48,8 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
         zlib-dev \
     ;
 
-RUN --mount=type=cache,target=/tmp/pear,sharing=locked \
+RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
+    --mount=type=cache,target=/tmp/pear,sharing=locked \
     set -eux; \
     export \
 		CFLAGS="$PHP_CFLAGS" \
@@ -129,7 +130,8 @@ RUN --mount=type=cache,target=/tmp/pear,sharing=locked \
     pie install --skip-enable-extension swoole/swoole; \
     pie install --skip-enable-extension xdebug/xdebug
 
-RUN PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
+RUN set -eux; \
+    PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
     PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
     docker-php-ext-enable  \
       amqp \
