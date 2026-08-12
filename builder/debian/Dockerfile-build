@@ -91,27 +91,22 @@ RUN --mount=type=cache,target=/tmp/pear,sharing=locked \
         make && make test && make install && make clean || exit 1; \
         cd -; \
         docker-php-ext-enable --ini-name 0-docker-php-ext-igbinary.ini igbinary; \
-    pecl install --onlyreqdeps --nobuild msgpack; \
-        cd "$(pecl config-get temp_dir)/msgpack"; \
-        phpize; \
-        ./configure; \
-        make && make test && make install && make clean || exit 1; \
-        cd -; \
-        docker-php-ext-enable --ini-name 0-docker-php-ext-msgpack.ini msgpack; \
-    pecl install --onlyreqdeps --nobuild sqlsrv$( [ "$PHP_VERSION_ID" -lt 80300 ] && echo -5.12.0 ); \
-        cd "$(pecl config-get temp_dir)/sqlsrv"; \
-        phpize; \
-        ./configure; \
-        make && make test && make install && make clean || exit 1; \
-        cd -; \
-        docker-php-ext-enable sqlsrv; \
-    pecl install --onlyreqdeps --nobuild pdo_sqlsrv$( [ "$PHP_VERSION_ID" -lt 80300 ] && echo -5.12.0 ); \
-        cd "$(pecl config-get temp_dir)/pdo_sqlsrv"; \
-        phpize; \
-        ./configure; \
-        make && make test && make install && make clean || exit 1; \
-        cd -; \
-        docker-php-ext-enable pdo_sqlsrv; \
+    if [ "$PHP_VERSION_ID" -lt 80300 ]; then \
+        pecl install --onlyreqdeps --nobuild sqlsrv-5.12.0; \
+            cd "$(pecl config-get temp_dir)/sqlsrv"; \
+            phpize; \
+            ./configure; \
+            make && make test && make install && make clean || exit 1; \
+            cd -; \
+            docker-php-ext-enable sqlsrv; \
+        pecl install --onlyreqdeps --nobuild pdo_sqlsrv-5.12.0; \
+            cd "$(pecl config-get temp_dir)/pdo_sqlsrv"; \
+            phpize; \
+            ./configure; \
+            make && make test && make install && make clean || exit 1; \
+            cd -; \
+            docker-php-ext-enable pdo_sqlsrv; \
+    fi; \
     pecl install --onlyreqdeps --nobuild xhprof; \
         cd "$(pecl config-get temp_dir)/xhprof/extension"; \
         phpize; \
@@ -121,23 +116,30 @@ RUN --mount=type=cache,target=/tmp/pear,sharing=locked \
         docker-php-ext-enable xhprof; \
 \
 # Install additional PHP extensions using PIE for easier management and to get the latest stable versions \
-    pie install --skip-enable-extension apcu/apcu  && \
-    pie install --skip-enable-extension imagick/imagick && \
-    pie install --skip-enable-extension mongodb/mongodb-extension && \
-    pie install --skip-enable-extension nikic/php-ast  && \
-    pie install --skip-enable-extension osmanov/pecl-ev  && \
-    pie install --skip-enable-extension php-amqp/php-amqp && \
-    pie install --skip-enable-extension pecl/mcrypt  && \
-    if [ "$PHP_ZTS" -eq 1 ]; then pie install --skip-enable-extension pecl/parallel; fi && \
-    pie install --skip-enable-extension pecl/pcov  && \
-    pie install --skip-enable-extension pecl/timezonedb  && \
-    pie install --skip-enable-extension php-memcached/php-memcached --enable-memcached-json --enable-memcached-igbinary --enable-memcached-msgpack  && \
-    pie install --skip-enable-extension phpredis/phpredis --enable-redis-igbinary --enable-redis-msgpack  && \
-    pie install --skip-enable-extension supermetrics/jsonpath && \
-    pie install --skip-enable-extension swoole/swoole && \
+    pie install --skip-enable-extension apcu/apcu; \
+    pie install --skip-enable-extension imagick/imagick; \
+    if [ "$PHP_VERSION_ID" -ge 80300 ]; then \
+        pie install --skip-enable-extension microsoft/sqlsrv; \
+        pie install --skip-enable-extension microsoft/pdo_sqlsrv; \
+    fi; \
+    pie install --skip-enable-extension mongodb/mongodb-extension; \
+    pie install --skip-enable-extension msgpack/msgpack-php; \
+    pie install --skip-enable-extension nikic/php-ast; \
+    pie install --skip-enable-extension osmanov/pecl-ev; \
+    pie install --skip-enable-extension php-amqp/php-amqp; \
+    pie install --skip-enable-extension pecl/mcrypt; \
+    if [ "$PHP_ZTS" -eq 1 ]; then pie install --skip-enable-extension pecl/parallel; fi; \
+    pie install --skip-enable-extension pecl/pcov; \
+    pie install --skip-enable-extension pecl/timezonedb; \
+    pie install --skip-enable-extension php-memcached/php-memcached --enable-memcached-json --enable-memcached-igbinary --enable-memcached-msgpack; \
+    pie install --skip-enable-extension phpredis/phpredis --enable-redis-igbinary --enable-redis-msgpack; \
+    pie install --skip-enable-extension supermetrics/jsonpath; \
+    pie install --skip-enable-extension swoole/swoole; \
     pie install --skip-enable-extension xdebug/xdebug
 
-RUN PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
+RUN set -eux; \
+    PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
+    PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
     docker-php-ext-enable  \
       amqp \
       apcu \
@@ -148,9 +150,12 @@ RUN PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
       mcrypt \
       memcached \
       mongodb \
+      msgpack \
       $( [ "$PHP_ZTS" -eq 1 ] && echo parallel ) \
       pcov \
+      $( [ "$PHP_VERSION_ID" -ge 80300 ] && echo pdo_sqlsrv ) \
       redis \
+      $( [ "$PHP_VERSION_ID" -ge 80300 ] && echo sqlsrv ) \
       swoole \
       timezonedb \
       xdebug || { echo "Could not enable some extensions"; exit 1; }; \
