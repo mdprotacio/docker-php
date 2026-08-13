@@ -109,25 +109,33 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
         docker-php-ext-enable xhprof; \
 \
 # Install additional PHP extensions using PIE for easier management and to get the latest stable versions \
-    pie install --skip-enable-extension apcu/apcu; \
-    pie install --skip-enable-extension imagick/imagick; \
+    test -n "$GITHUB_TOKEN"; \
+    pie install --skip-enable-extension apcu/apcu && \
+    pie install --skip-enable-extension imagick/imagick && \
     if [ "$PHP_VERSION_ID" -ge 80300 ]; then \
-        pie install --skip-enable-extension microsoft/sqlsrv; \
+        pie install --skip-enable-extension microsoft/sqlsrv && \
         pie install --skip-enable-extension microsoft/pdo_sqlsrv; \
-    fi; \
-    pie install --skip-enable-extension mongodb/mongodb-extension; \
-    pie install --skip-enable-extension msgpack/msgpack-php; \
-    pie install --skip-enable-extension nikic/php-ast; \
-    pie install --skip-enable-extension osmanov/pecl-ev; \
-    pie install --skip-enable-extension php-amqp/php-amqp; \
-    pie install --skip-enable-extension pecl/mcrypt; \
-    if [ "$PHP_ZTS" -eq 1 ]; then pie install --skip-enable-extension pecl/parallel; fi; \
-    pie install --skip-enable-extension pecl/pcov; \
-    pie install --skip-enable-extension pecl/timezonedb; \
-    pie install --skip-enable-extension php-memcached/php-memcached --enable-memcached-json --enable-memcached-igbinary --enable-memcached-msgpack; \
-    pie install --skip-enable-extension phpredis/phpredis --enable-redis-igbinary --enable-redis-msgpack; \
-    pie install --skip-enable-extension supermetrics/jsonpath; \
-    pie install --skip-enable-extension swoole/swoole; \
+    fi && \
+    pie install --skip-enable-extension mongodb/mongodb-extension && \
+    pie install --skip-enable-extension msgpack/msgpack-php && \
+    pie install --skip-enable-extension nikic/php-ast && \
+    pie install --skip-enable-extension osmanov/pecl-ev && \
+    pie install --skip-enable-extension php-amqp/php-amqp && \
+    pie install --skip-enable-extension pecl/mcrypt && \
+    if [ "$PHP_ZTS" -eq 1 ]; then \
+        pie install --skip-enable-extension pecl/parallel; \
+    fi && \
+    pie install --skip-enable-extension pecl/pcov && \
+    pie install --skip-enable-extension pecl/timezonedb && \
+    pie install --skip-enable-extension php-memcached/php-memcached \
+        --enable-memcached-json \
+        --enable-memcached-igbinary \
+        --enable-memcached-msgpack && \
+    pie install --skip-enable-extension phpredis/phpredis \
+        --enable-redis-igbinary \
+        --enable-redis-msgpack && \
+    pie install --skip-enable-extension supermetrics/jsonpath && \
+    pie install --skip-enable-extension swoole/swoole && \
     pie install --skip-enable-extension xdebug/xdebug
 
 RUN set -eux; \
