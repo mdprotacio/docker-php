@@ -147,6 +147,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
 RUN set -eux; \
     PHP_VERSION_ID="$(php -r 'echo PHP_VERSION_ID;')"; \
     PHP_ZTS="$(php -r 'echo PHP_ZTS;')"; \
+    docker-php-ext-enable --ini-name 0-docker-php-ext-msgpack.ini msgpack; \
     docker-php-ext-enable  \
       amqp \
       apcu \
@@ -157,7 +158,6 @@ RUN set -eux; \
       mcrypt \
       memcached \
       mongodb \
-      msgpack \
       $( [ "$PHP_ZTS" -eq 1 ] && echo parallel ) \
       pcov \
       $( [ "$PHP_VERSION_ID" -ge 80300 ] && echo pdo_sqlsrv ) \
