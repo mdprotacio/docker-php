@@ -18,8 +18,7 @@ COPY --link --from=composer /usr/bin/composer /usr/local/bin/composer
 COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 
 # Replace http package sources with https
-RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
-    --mount=type=cache,target=/var/cache/apt,sharing=locked \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     set -eux; \
     sed -i 's|http://|https://|g' /etc/apt/sources.list.d/* \
     && apt-get clean \
@@ -29,7 +28,6 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
         gnupg \
         openssl \
     && update-ca-certificates  \
-    && composer config --global github-oauth.github.com $GITHUB_TOKEN \
     && apt-get install -y --no-install-recommends \
         $PHPIZE_DEPS \
         libicu-dev \
@@ -117,7 +115,7 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
         docker-php-ext-enable xhprof; \
 \
 # Install additional PHP extensions using PIE for easier management and to get the latest stable versions \
-    test -n "$GITHUB_TOKEN"; \
+    composer config --global github-oauth.github.com $GITHUB_TOKEN; \
     pie install --skip-enable-extension apcu/apcu && \
     pie install --skip-enable-extension imagick/imagick && \
     if [ "$PHP_VERSION_ID" -ge 80300 ]; then \
