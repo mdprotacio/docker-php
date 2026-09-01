@@ -20,6 +20,11 @@ DOCKER_BUILD_OPTS=""
 OS=""
 OS_SET=0
 
+# Base image registry/path (can be overridden via CLI)
+BASE_IMAGE_REGISTRY="public.ecr.aws"
+BASE_IMAGE_PATH=""
+BASE_IMAGE_PATH_SET=0
+
 # Function to print usage
 usage() {
     cat << EOF
@@ -32,6 +37,8 @@ Options:
     -m, --mode MODE             Build mode: 'base' for prebuild images, 'final' for final images, 'both' for both
     -g, --github-token TOKEN    GitHub token (optional, will try to retrieve from composer if not provided)
     -o, --docker-opts OPTS      Extra options passed to 'docker buildx build' (e.g. \`--no-cache --progress=plain\`)
+    -r, --base-registry REG     Base image registry (default: public.ecr.aws)
+    -p, --base-path PATH        Base image path/namespace (default depends on registry; public.ecr.aws -> docker/library, otherwise -> library)
     -h, --help                  Display this help message
 
 Examples:
@@ -41,11 +48,8 @@ Examples:
     # Build final image using existing prebuild
     $0 --version 8.4.15 --variant cli --mode final
 
-    # Build both base and final images
-    $0 --version 8.4.15 --variant cli --mode both
-
-    # Build with custom GitHub token and extra docker build options
-    $0 --version 8.4.15 --variant cli --mode both --github-token ghp_xxxxx --docker-opts "--no-cache --progress=plain"
+    # Build both base and final images using an alternative base image registry
+    $0 --version 8.4.15 --variant cli --mode both --base-registry docker.io
 
 EOF
     exit 1
@@ -156,6 +160,8 @@ build_base_image() {
             --file "$dockerfile" \
             --build-arg PHP_VERSION="$version" \
             --build-arg PHP_VARIANT="$base_name" \
+            --build-arg BASE_IMAGE_REGISTRY="$BASE_IMAGE_REGISTRY" \
+            --build-arg BASE_IMAGE_PATH="$BASE_IMAGE_PATH" \
             --tag "$image_tag" \
             --secret id=github_token,src=/dev/stdin \
             .
@@ -166,6 +172,8 @@ build_base_image() {
             --file "$dockerfile" \
             --build-arg PHP_VERSION="$version" \
             --build-arg PHP_VARIANT="$base_name" \
+            --build-arg BASE_IMAGE_REGISTRY="$BASE_IMAGE_REGISTRY" \
+            --build-arg BASE_IMAGE_PATH="$BASE_IMAGE_PATH" \
             --tag "$image_tag" \
             .
     fi
@@ -199,7 +207,7 @@ build_final_image() {
     if ! docker image inspect "$prebuild_image" >/dev/null 2>&1; then
         echo -e "${RED}Error: Required prebuild image not found: ${prebuild_image}${NC}"
         echo "Tip: Build it first with:"
-        echo "  $0 --version $version --variant ${base_name}$( [ "$os" != "debian" ] && echo "-${os}" ) --mode base"
+        echo "  $0 --version $version --variant ${base_name}$( [ \"$os\" != \"debian\" ] && echo \"-${os}\" ) --mode base"
         echo "Or use:"
         echo "  $0 --version $version --variant $variant --mode both"
         exit 1
@@ -213,9 +221,9 @@ build_final_image() {
     echo -e "${YELLOW}Building: $image_tag${NC}"
     echo -e "${YELLOW}Using base context: php-${version}-${base_tag_variant}-prebuild${NC}"
 
-    # Pre-pull official base image to ensure it's up-to-date
-    echo -e "${YELLOW}Ensuring official base image is up-to-date: php:${version}-${variant}${NC}"
-    docker pull "php:${version}-${variant}" >/dev/null || true
+    # Pre-pull official base image to ensure it's up-to-date (pull from configured registry/path)
+    echo -e "${YELLOW}Ensuring official base image is up-to-date: ${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${version}-${variant}${NC}"
+    docker pull "${BASE_IMAGE_REGISTRY}/${BASE_IMAGE_PATH}/php:${version}-${variant}" >/dev/null || true
 
     # Split DOCKER_BUILD_OPTS into an array (safe splitting)
     read -r -a DOCKER_BUILD_OPTS_ARR <<< "$DOCKER_BUILD_OPTS"
@@ -234,6 +242,8 @@ build_final_image() {
         --build-arg PHP_VERSION="$version" \
         --build-arg PHP_VARIANT="$name" \
         --build-arg PHP_BASE_VARIANT="$base_name" \
+        --build-arg BASE_IMAGE_REGISTRY="$BASE_IMAGE_REGISTRY" \
+        --build-arg BASE_IMAGE_PATH="$BASE_IMAGE_PATH" \
         $build_contexts \
         --tag "$image_tag" \
         .
@@ -267,6 +277,15 @@ while [[ $# -gt 0 ]]; do
             ;;
         -o|--docker-opts)
             DOCKER_BUILD_OPTS="$2"
+            shift 2
+            ;;
+        -r|--base-registry)
+            BASE_IMAGE_REGISTRY="$2"
+            shift 2
+            ;;
+        -p|--base-path)
+            BASE_IMAGE_PATH="$2"
+            BASE_IMAGE_PATH_SET=1
             shift 2
             ;;
         -h|--help)
@@ -316,6 +335,15 @@ else
     OS="${_derived_os:-debian}"
 fi
 
+# If BASE_IMAGE_PATH not explicitly set, derive it like the workflows do
+if [ "$BASE_IMAGE_PATH_SET" -ne 1 ]; then
+    if [ "$BASE_IMAGE_REGISTRY" = "public.ecr.aws" ]; then
+        BASE_IMAGE_PATH="docker/library"
+    else
+        BASE_IMAGE_PATH="library"
+    fi
+fi
+
 # Get GitHub token from composer if not provided
 if [ -z "$GITHUB_TOKEN" ]; then
     GITHUB_TOKEN=$(get_github_token_from_composer)
@@ -329,6 +357,8 @@ echo "PHP Version:       $PHP_VERSION"
 echo "Variant:           $VARIANT"
 echo "OS:                $OS"
 echo "Build Mode:        $BUILD_MODE"
+echo "Base image registry: $BASE_IMAGE_REGISTRY"
+echo "Base image path:     $BASE_IMAGE_PATH"
 echo "GitHub Token:      $([ -n "$GITHUB_TOKEN" ] && echo "Provided" || echo "Not provided")"
 echo "Docker build opts:  $([ -n "$DOCKER_BUILD_OPTS" ] && echo "$DOCKER_BUILD_OPTS" || echo "None")"
 echo -e "${GREEN}======================================${NC}"

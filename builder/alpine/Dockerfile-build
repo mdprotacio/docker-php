@@ -98,13 +98,15 @@ RUN --mount=type=secret,id=github_token,env=GITHUB_TOKEN \
             cd -; \
             docker-php-ext-enable pdo_sqlsrv; \
     fi; \
-    pecl install --onlyreqdeps --nobuild xhprof; \
-        cd "$(pecl config-get temp_dir)/xhprof/extension"; \
-        phpize; \
-        ./configure; \
-        make && make test && make install && make clean || exit 1; \
-        cd -; \
-        docker-php-ext-enable xhprof; \
+    if [ "$PHP_VERSION_ID" -lt 80500 ]; then \
+        pecl install --onlyreqdeps --nobuild xhprof; \
+            cd "$(pecl config-get temp_dir)/xhprof/extension"; \
+            phpize; \
+            ./configure; \
+            make && make test && make install && make clean || exit 1; \
+            cd -; \
+            docker-php-ext-enable xhprof; \
+    fi; \
 \
 # Install additional PHP extensions using PIE for easier management and to get the latest stable versions \
     composer config --global github-oauth.github.com $GITHUB_TOKEN; \
